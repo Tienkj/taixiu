@@ -1,0 +1,791 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tài Xỉu Pro - Tự Tay Mở Bát</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #0f172a;
+            color: white;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* --- XÚC XẮC --- */
+        .dice {
+            width: 50px; height: 50px; background: white; border-radius: 10px;
+            display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 3px;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.5);
+        }
+        .dot {
+            background: #ef4444; border-radius: 50%; width: 9px; height: 9px;
+            align-self: center; justify-self: center; box-shadow: inset 0 0 2px rgba(0,0,0,0.5);
+        }
+        .face-1 .dot:nth-child(1) { grid-area: 2 / 2; width: 12px; height: 12px; }
+        .face-2 .dot:nth-child(1) { grid-area: 1 / 1; } .face-2 .dot:nth-child(2) { grid-area: 3 / 3; }
+        .face-3 .dot:nth-child(1) { grid-area: 1 / 1; } .face-3 .dot:nth-child(2) { grid-area: 2 / 2; } .face-3 .dot:nth-child(3) { grid-area: 3 / 3; }
+        .face-4 .dot:nth-child(1) { grid-area: 1 / 1; } .face-4 .dot:nth-child(2) { grid-area: 1 / 3; } .face-4 .dot:nth-child(3) { grid-area: 3 / 1; } .face-4 .dot:nth-child(4) { grid-area: 3 / 3; }
+        .face-5 .dot:nth-child(1) { grid-area: 1 / 1; } .face-5 .dot:nth-child(2) { grid-area: 1 / 3; } .face-5 .dot:nth-child(3) { grid-area: 2 / 2; } .face-5 .dot:nth-child(4) { grid-area: 3 / 1; } .face-5 .dot:nth-child(5) { grid-area: 3 / 3; }
+        .face-6 .dot:nth-child(1) { grid-area: 1 / 1; } .face-6 .dot:nth-child(2) { grid-area: 1 / 3; } .face-6 .dot:nth-child(3) { grid-area: 2 / 1; } .face-6 .dot:nth-child(4) { grid-area: 2 / 3; } .face-6 .dot:nth-child(5) { grid-area: 3 / 1; } .face-6 .dot:nth-child(6) { grid-area: 3 / 3; }
+
+        /* --- BÁT & ĐĨA --- */
+        #bowl-container {
+            position: relative; width: 220px; height: 220px; margin: 0 auto;
+            display: flex; justify-content: center; align-items: center;
+        }
+        #plate {
+            position: absolute; width: 200px; height: 200px;
+            background: radial-gradient(circle, #e5e7eb 0%, #9ca3af 100%);
+            border-radius: 50%; border: 6px solid #4b5563; z-index: 1;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+        #dice-area {
+            position: absolute; z-index: 2; display: flex; gap: 6px;
+            justify-content: center; align-items: center; flex-wrap: wrap; width: 120px;
+        }
+        #bowl {
+            position: absolute; width: 190px; height: 190px;
+            background: radial-gradient(circle at 30% 30%, #7dd3fc 0%, #0284c7 60%, #0c4a6e 100%);
+            border-radius: 50%; z-index: 10;
+            box-shadow: inset -8px -8px 20px rgba(0,0,0,0.5), 8px 8px 16px rgba(0,0,0,0.6);
+            border: 3px solid #0ea5e9;
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s;
+            cursor: pointer;
+        }
+        #bowl.open { transform: translateY(-160px) scale(0.85); opacity: 0; pointer-events: none; }
+        
+        /* Hiệu ứng bát chờ mở */
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); border-color: #eab308; }
+            70% { box-shadow: 0 0 0 15px rgba(234, 179, 8, 0); border-color: #eab308; }
+            100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); border-color: #0ea5e9; }
+        }
+        #bowl.ready { animation: pulse-border 1.5s infinite; }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            25% { transform: translate(-2px, -2px) rotate(-2deg); }
+            50% { transform: translate(2px, 2px) rotate(2deg); }
+            75% { transform: translate(-1px, 1px) rotate(-1deg); }
+            100% { transform: translate(0, 0) rotate(0); }
+        }
+        .shaking { animation: shake 0.1s infinite; }
+
+        /* --- CÁC PHẦN KHÁC --- */
+        .cau-grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; width: 100%; height: 20px; margin-top: 5px; }
+        .cau-dot { width: 10px; height: 10px; border-radius: 50%; margin: auto; }
+        .cau-tai { background-color: #ef4444; } .cau-xiu { background-color: #3b82f6; }
+        #chat-box { mask-image: linear-gradient(to bottom, transparent, black 10%); }
+        .chat-msg { font-size: 13px; margin-bottom: 2px; line-height: 1.4; }
+        #toast {
+            visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 12px;
+            position: fixed; z-index: 100; left: 50%; bottom: 80px; transform: translateX(-50%); font-size: 14px; opacity: 0; transition: opacity 0.3s, bottom 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        #toast.show { visibility: visible; opacity: 1; bottom: 100px; }
+        #toast.success { background-color: #166534; border-left: 5px solid #4ade80; }
+        #toast.error { background-color: #991b1b; border-left: 5px solid #f87171; }
+    </style>
+</head>
+<body class="flex flex-col h-screen w-full bg-slate-900">
+
+    <!-- HEADER -->
+    <header class="bg-slate-800 p-2 px-3 flex justify-between items-center shadow-md z-30 h-14 shrink-0">
+        <div class="flex flex-col leading-tight">
+            <span class="text-[10px] text-slate-400 uppercase tracking-wider">Số dư khả dụng</span>
+            <div class="flex items-baseline gap-1">
+                <span id="balance" class="font-mono font-bold text-yellow-400 text-lg">50,000,000</span>
+                <span class="text-xs text-yellow-600 font-bold">VNĐ</span>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <!-- Nút NẠP TIỀN -->
+            <button onclick="showDepositModal()" class="bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow-lg active:scale-95 transition">
+                NẠP
+            </button>
+            <!-- Nút RÚT TIỀN -->
+            <button onclick="showWithdrawModal()" class="bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow-lg active:scale-95 transition">
+                RÚT
+            </button>
+            <!-- Nút SETTINGS -->
+            <button onclick="document.getElementById('settings-modal').classList.remove('hidden')" class="bg-slate-700 p-2 rounded-lg text-slate-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            </button>
+            <!-- Nút FULL SCREEN MỚI -->
+            <button onclick="toggleFullScreen()" id="fullscreen-btn" class="bg-slate-700 p-2 rounded-lg text-slate-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m7-5v4m0 0h-4m4-4l-5 5M4 16v4m0 0h4m-4 0l5-5m7 5v-4m0 4h-4m4 0l-5-5" /></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN GAME -->
+    <main class="flex-1 flex flex-col relative overflow-hidden">
+        
+        <!-- Soi Cầu -->
+        <div class="bg-slate-950/50 p-2 border-b border-slate-800 shrink-0">
+            <div class="flex justify-between text-[10px] text-slate-400">
+                <span>Cầu gần nhất</span>
+                <span id="cau-stats">T: 0 - X: 0</span>
+            </div>
+            <div id="history-grid" class="cau-grid"></div>
+        </div>
+
+        <!-- BOWL AREA -->
+        <div class="flex-1 flex flex-col justify-center items-center relative min-h-[240px]">
+            <div id="bowl-container">
+                <div id="plate"></div>
+                <div id="dice-area">
+                    <!-- Dice will be rendered here -->
+                    <div class="dice face-1"><div class="dot"></div></div>
+                    <div class="dice face-2"><div class="dot"></div><div class="dot"></div></div>
+                    <div class="dice face-3"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                </div>
+                <!-- BÁT CÓ SỰ KIỆN CLICK -->
+                <div id="bowl" onclick="manualOpenBowl()">
+                    <div id="open-text" class="absolute inset-0 flex items-center justify-center pointer-events-none text-white text-center text-sm font-bold opacity-0 transition-opacity duration-300">
+                        CHẠM ĐỂ MỞ BÁT
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
+                        <div class="w-16 h-16 border-4 border-white rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Result Popup -->
+            <div id="result-display" class="absolute bottom-4 bg-black/60 px-6 py-2 rounded-full backdrop-blur-sm border border-white/10 opacity-0 transition-opacity duration-300 pointer-events-none">
+                <div class="flex items-center gap-3 font-black text-3xl">
+                    <span id="result-sum" class="text-white">--</span>
+                    <span class="text-slate-500 text-xl">|</span>
+                    <span id="result-text" class="text-yellow-400">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- BETTING AREA -->
+        <div class="bg-slate-800 rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.5)] shrink-0 z-20 pb-safe">
+            <div class="h-8 flex items-center justify-center border-b border-slate-700/50">
+                <span id="game-status" class="text-xs font-bold text-green-400 tracking-wider">MỜI ĐẶT CƯỢC</span>
+            </div>
+
+            <div class="p-3 pb-2 flex gap-3">
+                <!-- Nút TÀI -->
+                <button id="btn-tai" onclick="selectSide('tai')" class="flex-1 h-20 bg-gradient-to-br from-red-900 to-red-600 rounded-xl border-b-4 border-red-950 active:border-b-0 active:translate-y-1 transition-all flex flex-col items-center justify-center relative overflow-hidden group">
+                    <span class="text-2xl font-black text-white drop-shadow-md">TÀI</span>
+                    <span class="text-[10px] text-red-200 opacity-80">11 - 17</span>
+                    <div id="bet-tai-display" class="bg-black/40 px-2 rounded text-xs text-yellow-300 font-mono font-bold mt-1 opacity-0">0</div>
+                </button>
+                
+                <!-- Nút XỈU -->
+                <button id="btn-xiu" onclick="selectSide('xiu')" class="flex-1 h-20 bg-gradient-to-br from-blue-900 to-blue-600 rounded-xl border-b-4 border-blue-950 active:border-b-0 active:translate-y-1 transition-all flex flex-col items-center justify-center relative overflow-hidden group">
+                    <span class="text-2xl font-black text-white drop-shadow-md">XỈU</span>
+                    <span class="text-[10px] text-blue-200 opacity-80">4 - 10</span>
+                    <div id="bet-xiu-display" class="bg-black/40 px-2 rounded text-xs text-yellow-300 font-mono font-bold mt-1 opacity-0">0</div>
+                </button>
+            </div>
+
+            <div class="px-3 pb-3 space-y-2">
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 relative">
+                        <input type="number" id="bet-input" value="100000" class="w-full bg-slate-900 border border-slate-600 rounded-lg pl-3 pr-8 py-2 text-right font-mono font-bold text-white text-sm focus:outline-none focus:border-yellow-500 transition-colors">
+                        <span class="absolute right-2 top-2.5 text-xs text-slate-500">đ</span>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="quickAdd(100000)" class="bg-slate-700 px-2 py-2 rounded text-[10px] font-bold text-slate-300 hover:bg-slate-600">+100k</button>
+                        <button onclick="quickAdd(500000)" class="bg-slate-700 px-2 py-2 rounded text-[10px] font-bold text-slate-300 hover:bg-slate-600">+500k</button>
+                        <button onclick="quickAdd(1000000)" class="bg-slate-700 px-2 py-2 rounded text-[10px] font-bold text-slate-300 hover:bg-slate-600">+1M</button>
+                        <button onclick="allInSide()" class="bg-purple-900 text-purple-300 px-2 py-2 rounded text-[10px] font-bold border border-purple-700 hover:bg-purple-800">ALL IN</button>
+                    </div>
+                </div>
+                
+                <button onclick="placeBet()" class="w-full bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-700 text-white py-3 rounded-lg font-bold text-lg shadow-lg uppercase tracking-wide transition-colors">
+                    XÁC NHẬN CƯỢC
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat -->
+        <div class="h-32 bg-slate-950 shrink-0 flex flex-col relative border-t border-slate-800">
+            <div class="absolute top-0 left-0 bg-yellow-600 text-black text-[10px] font-bold px-2 py-0.5 rounded-br">CHATBOX</div>
+            <div id="chat-box" class="flex-1 overflow-y-auto p-2 pt-5 flex flex-col justify-end">
+                <div class="chat-msg text-slate-500 italic">Hệ thống: Chatbox đã sẵn sàng.</div>
+            </div>
+            <div class="p-1.5 flex gap-2 bg-slate-900">
+                <input type="text" id="user-chat" placeholder="Nhập tin nhắn..." class="flex-1 bg-slate-800 rounded px-2 py-1 text-xs text-white border border-slate-700 focus:outline-none" onkeydown="if(event.key==='Enter') sendUserChat()">
+                <button onclick="sendUserChat()" class="bg-blue-700 px-3 rounded text-white text-xs font-bold">Gửi</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL NẠP TIỀN -->
+    <div id="deposit-modal" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-slate-800 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-700">
+            <div class="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-blue-400">NẠP TIỀN GIẢ</h3>
+                <button onclick="closeDepositModal()" class="text-slate-500">✕</button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div class="text-sm text-slate-300 bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+                    <p>Đây là tính năng nạp tiền giả để bạn có vốn trải nghiệm. Tiền nạp không có giá trị thật.</p>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Phương thức</label>
+                    <select class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm"><option>Chuyển khoản Ngân hàng (Giả lập)</option></select>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Số tiền muốn nạp</label>
+                    <input type="number" id="dp-amount" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm font-bold text-blue-400">
+                </div>
+                <div id="dp-loading" class="hidden text-center py-2"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div></div>
+                <button onclick="processDeposit()" class="w-full py-2.5 rounded-lg bg-blue-600 text-white font-bold text-sm shadow-lg">XÁC NHẬN NẠP TIỀN</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL RÚT TIỀN -->
+    <div id="withdraw-modal" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-slate-800 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-700">
+            <div class="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-green-400">RÚT TIỀN GIẢ</h3>
+                <button onclick="closeWithdrawModal()" class="text-slate-500">✕</button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Ngân hàng</label>
+                    <select class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm"><option>VIETCOMBANK (Giả lập)</option><option>MB BANK (Giả lập)</option></select>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">STK</label>
+                    <input type="number" id="wd-account" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm" placeholder="Nhập số tài khoản">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Số tiền</label>
+                    <input type="number" id="wd-amount" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm font-bold text-green-400">
+                    <span onclick="wdAllIn()" class="text-[10px] text-green-500 underline cursor-pointer">Rút hết: <span id="wd-balance-display"></span></span>
+                </div>
+                <div id="wd-loading" class="hidden text-center py-2"><div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div></div>
+                <button onclick="processWithdraw()" class="w-full py-2.5 rounded-lg bg-green-600 text-white font-bold text-sm shadow-lg">XÁC NHẬN RÚT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 rounded-lg p-6 w-full max-w-sm border border-slate-600">
+            <h3 class="text-xl font-bold text-white mb-4">Cài đặt API</h3>
+            <div class="mb-4">
+                <label class="block text-sm text-slate-400 mb-1">Gemini API Key</label>
+                <input type="password" id="api-key-input" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="bg-slate-700 text-white px-4 py-2 rounded">Đóng</button>
+                <button onclick="saveSettings()" class="bg-yellow-600 text-white px-4 py-2 rounded font-bold">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Thông báo</div>
+
+    <script>
+        // --- VARIABLES ---
+        let balance = 50000000;
+        let currentBet = { side: null, amount: 0 };
+        let gameState = 'betting'; // betting, rolling, waiting_to_open, revealing
+        let pendingResult = null; // Lưu kết quả chờ mở bát
+        let history = []; // Lưu lịch sử: { sum: number, result: 'tai' | 'xiu' }
+        let chatInterval; // Biến để lưu trữ ID của setInterval
+        let roundCounter = 0; // Đếm số vòng chơi
+        
+        // Khởi tạo và load API Key
+        let apiKey = localStorage.getItem('gemini_api_key') || '';
+        if(apiKey) document.getElementById('api-key-input').value = apiKey;
+
+        // DÀN BOT - TẠO SỰ SÔI NỔI
+        const bots = [
+            {name:"Sơn Tùng", color:"text-sky-400"},
+            {name:"Khá Bảnh", color:"text-purple-400"},
+            {name:"Huấn Rose", color:"text-pink-400"},
+            {name:"Lý Tiểu Long", color:"text-green-400"},
+            {name:"Tùng Sơn", color:"text-red-400"},
+            {name:"Đại Úy Phượt", color:"text-orange-400"},
+            {name:"Bé Mít", color:"text-fuchsia-300"},
+            {name:"Thợ Xây", color:"text-teal-400"},
+            {name:"Tay To", color:"text-amber-500"},
+            {name:"Khương Dừa", color:"text-lime-500"},
+        ];
+
+        // --- GEMINI API CALL ---
+        async function callGemini(prompt, systemPrompt, maxRetries = 3) {
+            if (!apiKey) return null;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const payload = { 
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "user": { "type": "STRING" },
+                                "msg": { "type": "STRING" },
+                                "dice": { "type": "ARRAY", "items": { "type": "NUMBER" } } // Thêm dice cho kết quả nhà cái
+                            },
+                            "propertyOrdering": ["user", "msg", "dice"]
+                        }
+                    }
+                }
+            };
+
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorBody = await response.json();
+                        if (response.status >= 400 && response.status < 500) {
+                            console.error(`Gemini Error (${response.status}):`, errorBody);
+                            if (response.status === 400 && errorBody.error?.message.includes("API key not valid")) {
+                                showToast("API Key không hợp lệ. Vui lòng kiểm tra lại.", "error");
+                                return null;
+                            }
+                            // Tiếp tục thử lại với lỗi 4xx khác (trừ 400 invalid key)
+                            if (i < maxRetries - 1) continue; 
+                            throw new Error(`Server error: ${response.status}`);
+                        }
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!jsonText) return null;
+
+                    // Parse JSON trả về
+                    const msgs = JSON.parse(jsonText.replace(/```json|```/g, '').trim());
+                    // Nếu là yêu cầu getGeminiResult, ta chỉ cần object đầu tiên (chứa dice)
+                    if (prompt.includes("Hãy tạo kết quả xúc xắc tiếp theo")) {
+                        return msgs[0];
+                    }
+                    return msgs;
+
+                } catch (error) {
+                    if (i < maxRetries - 1) {
+                        const delay = Math.pow(2, i) * 1000;
+                        await new Promise(r => setTimeout(r, delay));
+                    } else {
+                        console.error("Gemini API Fatal Error:", error);
+                        return null;
+                    }
+                }
+            }
+            return null;
+        }
+
+        // --- CHAT LOGIC ---
+        function startChatLoop() {
+            // Xóa interval cũ nếu có
+            if (chatInterval) clearInterval(chatInterval);
+
+            // Bắt đầu interval mới, tạo chat mỗi 2-5 giây để tăng tính "xôn xao"
+            chatInterval = setInterval(async () => {
+                if (gameState === 'betting' && apiKey) {
+                    await triggerBotChat('debate');
+                }
+            }, 2000 + Math.random() * 3000); // 2 đến 5 giây
+        }
+
+        async function triggerBotChat(mode, resultData = null) {
+            if (!apiKey) {
+                const box = document.getElementById('chat-box');
+                const lastMsg = box.lastChild?.innerText || '';
+                if (!lastMsg.includes("vui lòng nhập API Key")) {
+                    addChat("Hệ thống", "Chat tự động chưa kích hoạt. Vui lòng nhập API Key trong mục Cài Đặt ⚙️).");
+                }
+                return;
+            }
+            
+            let prompt = "";
+            let systemPrompt = "";
+            
+            if (mode === 'debate') {
+                const historyStr = history.slice(-15).map(h => h.result === 'tai' ? 'T' : 'X').join(',');
+                const botNames = bots.map(b => b.name).join(', ');
+                
+                systemPrompt = `Bạn là một nhóm người chơi Tài Xỉu (bots) đang sôi nổi bàn luận về lịch sử kết quả ("cầu"). Hãy sử dụng biệt ngữ, tiếng lóng VN, bày tỏ ý kiến mạnh mẽ (ví dụ: "Bẻ cầu", "Theo Tài tới cùng", "Khô máu") để tạo không khí tranh luận. TIN NHẮN PHẢI NGẮN GỌN (dưới 20 từ).`;
+                prompt = `Lịch sử cầu gần nhất (T=Tài, X=Xỉu) là: ${historyStr}. Vòng hiện tại là ${roundCounter}. Hãy tạo 3 tin nhắn chat tranh luận về việc nên đặt Tài hay Xỉu. Trả về JSON [{"user": "TenBot", "msg": "NoiDung"}]. Chỉ dùng các tên bot: ${botNames}.`;
+            } else if (mode === 'reaction' && resultData) {
+                const resStr = resultData.result === 'tai' ? "TÀI" : "XỈU";
+                const sum = resultData.sum;
+                const botNames = bots.map(b => b.name).join(', ');
+
+                systemPrompt = `Bạn là một nhóm người chơi Tài Xỉu (bots). Hãy phản ứng mạnh mẽ với kết quả vừa ra (${resStr} tổng ${sum}) bằng tiếng lóng VN. Tin nhắn nên thể hiện sự vui mừng (nếu trúng) hoặc thất vọng/giận dữ (nếu thua). TIN NHẮN PHẢI NGẮN GỌN (dưới 20 từ).`;
+                prompt = `Kết quả Tài Xỉu vừa về ${resStr} (${sum}). Tạo 3 tin nhắn phản ứng sau khi mở bát. Một tin phải thể hiện sự chiến thắng, một tin thể hiện sự thất bại, và một tin thể hiện sự bất ngờ. Trả về JSON [{"user": "TenBot", "msg": "NoiDung"}]. Chỉ dùng các tên bot: ${botNames}.`;
+            } else {
+                return;
+            }
+
+            const msgs = await callGemini(prompt, systemPrompt);
+            if (!msgs) return;
+            
+            // Lọc và thêm tin nhắn
+            msgs.forEach((m, i) => {
+                const bot = bots.find(b => b.name === m.user);
+                const name = bot ? bot.name : bots[i % bots.length].name; 
+                setTimeout(() => addChat(name, m.msg), i * 800);
+            });
+        }
+        
+        async function triggerBotReactionToUserChat(userMsg) {
+            // Chỉ phản ứng 50% lần và chỉ trong trạng thái betting
+            if (!apiKey || gameState !== 'betting' || Math.random() < 0.5) return; 
+
+            const historyStr = history.slice(-10).map(h => h.result === 'tai' ? 'T' : 'X').join(',');
+            const botNames = bots.map(b => b.name).join(', ');
+            
+            // System prompt yêu cầu chỉ 1 bot phản ứng
+            const systemPrompt = `Bạn là một nhóm người chơi Tài Xỉu (bots). Lịch sử cầu gần nhất (T=Tài, X=Xỉu): ${historyStr}. Hãy tạo CHỈ MỘT tin nhắn phản hồi lại người chơi. Sử dụng biệt ngữ VN, bày tỏ ý kiến mạnh mẽ và liên quan đến việc đặt cược hoặc soi cầu. TIN NHẮN PHẢI CỰC KỲ NGẮN GỌN (dưới 15 từ).`;
+            const prompt = `Người chơi gửi: "${userMsg}". Ai đó trong nhóm hãy phản ứng lại tin nhắn này. Trả về JSON [{"user": "TenBot", "msg": "NoiDung"}]. Chỉ dùng các tên bot: ${botNames}.`;
+
+            const msgs = await callGemini(prompt, systemPrompt);
+            if (msgs && msgs.length > 0) {
+                 // Trả lời sau 0.5 giây
+                 setTimeout(() => addChat(msgs[0].user, msgs[0].msg), 500);
+            }
+        }
+
+
+        // --- GAME LOGIC ---
+        function updateBalanceUI() {
+            document.getElementById('balance').innerText = balance.toLocaleString('en-US');
+            document.getElementById('wd-balance-display').innerText = balance.toLocaleString('en-US');
+        }
+
+        function quickAdd(amt) {
+            let current = parseInt(document.getElementById('bet-input').value) || 0;
+            document.getElementById('bet-input').value = current + amt;
+        }
+
+        function selectSide(side) {
+            if (gameState !== 'betting') return;
+            document.getElementById('btn-tai').className = document.getElementById('btn-tai').className.replace(' ring-4 ring-yellow-400 scale-95', '');
+            document.getElementById('btn-xiu').className = document.getElementById('btn-xiu').className.replace(' ring-4 ring-yellow-400 scale-95', '');
+            
+            const btn = document.getElementById(`btn-${side}`);
+            btn.className += ' ring-4 ring-yellow-400 scale-95';
+            currentBet.side = side;
+            if(navigator.vibrate) navigator.vibrate(50);
+        }
+
+        function allInSide() { if(balance > 0) document.getElementById('bet-input').value = balance; }
+
+        function placeBet() {
+            if (gameState !== 'betting') return showToast("Chờ ván sau!", "error");
+            if (!currentBet.side) return showToast("Chọn TÀI hoặc XỈU!", "error");
+            const amount = parseInt(document.getElementById('bet-input').value);
+            if (!amount || amount <= 0) return showToast("Nhập tiền!", "error");
+            if (amount > balance) return showToast("Không đủ số dư!", "error");
+
+            currentBet.amount = amount;
+            balance -= amount;
+            updateBalanceUI();
+
+            const displayId = `bet-${currentBet.side}-display`;
+            document.getElementById(displayId).innerText = amount.toLocaleString();
+            document.getElementById(displayId).classList.remove('opacity-0');
+            showToast(`Đã cược ${amount.toLocaleString()} ${currentBet.side.toUpperCase()}`, "success");
+
+            startRollSequence();
+        }
+
+        async function startRollSequence() {
+            gameState = 'rolling';
+            roundCounter++; // Tăng vòng chơi
+            document.getElementById('game-status').innerText = "NHÀ CÁI ĐANG XÓC...";
+            document.getElementById('game-status').className = "text-xs font-bold text-yellow-400 animate-pulse";
+            document.getElementById('open-text').classList.add('opacity-0');
+
+            // Dừng vòng lặp chat khi đang xóc
+            if (chatInterval) clearInterval(chatInterval);
+
+            // Đóng bát
+            const bowl = document.getElementById('bowl');
+            bowl.classList.remove('open', 'ready');
+            
+            await new Promise(r => setTimeout(r, 400));
+            bowl.classList.add('shaking');
+            if(navigator.vibrate) navigator.vibrate([100,50,100,50,100]);
+
+            // Gọi AI lấy kết quả ngầm (Đã tính đến "CẦU")
+            pendingResult = await getGeminiResult();
+            
+            await new Promise(r => setTimeout(r, 2000));
+            bowl.classList.remove('shaking');
+            
+            // Vẽ xúc xắc (đang bị bát che)
+            if(pendingResult) {
+                renderDice(pendingResult.dice);
+            } else {
+                 // Fallback nếu API lỗi
+                pendingResult = { dice: [1+Math.floor(Math.random()*6), 1+Math.floor(Math.random()*6), 1+Math.floor(Math.random()*6)] };
+                renderDice(pendingResult.dice);
+                showToast("Lỗi AI: Dùng kết quả ngẫu nhiên (API Key có thể chưa đúng)", "error");
+            }
+
+            // Chuyển sang trạng thái chờ mở
+            gameState = 'waiting_to_open';
+            document.getElementById('game-status').innerText = ">>> CHẠM VÀO BÁT ĐỂ MỞ <<<";
+            document.getElementById('game-status').className = "text-xs font-bold text-red-500 animate-pulse";
+            bowl.classList.add('ready'); // Hiệu ứng sáng viền bát
+            document.getElementById('open-text').classList.remove('opacity-0');
+        }
+
+        // --- HÀM MỞ BÁT (THỦ CÔNG) ---
+        function manualOpenBowl() {
+            if (gameState !== 'waiting_to_open') return;
+
+            gameState = 'revealing';
+            const bowl = document.getElementById('bowl');
+            bowl.classList.remove('ready');
+            bowl.classList.add('open');
+            document.getElementById('open-text').classList.add('opacity-0');
+
+            // Xử lý kết quả
+            const sum = pendingResult.dice.reduce((a,b)=>a+b, 0);
+            // Tài là 11-17, Xỉu là 4-10.
+            const isTai = sum >= 11 && sum <= 17;
+            const resultStr = isTai ? "TÀI" : "XỈU";
+            
+            const resultData = { sum, result: isTai ? 'tai' : 'xiu' };
+            
+            const resDisplay = document.getElementById('result-display');
+            document.getElementById('result-sum').innerText = sum;
+            document.getElementById('result-text').innerText = resultStr;
+            document.getElementById('result-text').className = isTai ? "text-red-500" : "text-blue-400";
+            resDisplay.classList.remove('opacity-0');
+
+            // Tính tiền
+            if (currentBet.amount > 0) {
+                const win = (currentBet.side === 'tai' && isTai) || (currentBet.side === 'xiu' && !isTai);
+                if (win) {
+                    const winAmount = currentBet.amount * 2;
+                    const profit = Math.floor(winAmount * 0.98); // Lãi 98% (thực tế là 1.98 lần tiền cược)
+                    balance += profit;
+                    setTimeout(() => showToast(`HÚP TRỌN! +${profit.toLocaleString()}`, "success"), 600);
+                } else {
+                    setTimeout(() => showToast("GÃY CÁNH! Mất trắng rồi", "error"), 600);
+                }
+                updateBalanceUI();
+            }
+
+            history.push(resultData);
+            renderHistory();
+            
+            // Bot phản ứng với kết quả
+            triggerBotChat('reaction', resultData); 
+
+            setTimeout(resetRound, 5000);
+        }
+
+        function resetRound() {
+            gameState = 'betting';
+            currentBet = { side: null, amount: 0 };
+            pendingResult = null;
+            
+            // Reset UI
+            document.getElementById('btn-tai').className = document.getElementById('btn-tai').className.replace(' ring-4 ring-yellow-400 scale-95', '');
+            document.getElementById('btn-xiu').className = document.getElementById('btn-xiu').className.replace(' ring-4 ring-yellow-400 scale-95', '');
+            document.getElementById('bet-tai-display').classList.add('opacity-0');
+            document.getElementById('bet-xiu-display').classList.add('opacity-0');
+            document.getElementById('result-display').classList.add('opacity-0');
+            
+            document.getElementById('game-status').innerText = "MỜI ĐẶT CƯỢC";
+            document.getElementById('game-status').className = "text-xs font-bold text-green-400 tracking-wider";
+
+            // Khởi động lại vòng lặp chat
+            startChatLoop();
+        }
+
+        // --- DEPOSIT & WITHDRAW LOGIC (Không đổi) ---
+        function showDepositModal() {
+            document.getElementById('deposit-modal').classList.remove('hidden');
+            document.getElementById('dp-amount').value = 5000000; // Giá trị gợi ý
+            document.getElementById('dp-loading').classList.add('hidden');
+        }
+        function closeDepositModal() { document.getElementById('deposit-modal').classList.add('hidden'); }
+        function processDeposit() {
+            const amt = parseInt(document.getElementById('dp-amount').value);
+            const loading = document.getElementById('dp-loading');
+            
+            if(!amt || amt <= 0) return showToast("Số tiền không hợp lệ!", "error");
+            
+            loading.classList.remove('hidden');
+            
+            // Giả lập giao dịch 1.2 giây
+            setTimeout(() => {
+                loading.classList.add('hidden');
+                balance += amt;
+                updateBalanceUI();
+                closeDepositModal();
+                showToast(`Nạp thành công ${amt.toLocaleString()} vào tài khoản!`, "success");
+            }, 1200);
+        }
+        function showWithdrawModal() {
+            document.getElementById('withdraw-modal').classList.remove('hidden');
+            document.getElementById('wd-balance-display').innerText = balance.toLocaleString('en-US');
+            document.getElementById('wd-amount').value = '';
+            document.getElementById('wd-loading').classList.add('hidden');
+        }
+        function closeWithdrawModal() { document.getElementById('withdraw-modal').classList.add('hidden'); }
+        function wdAllIn() { document.getElementById('wd-amount').value = balance; }
+        function processWithdraw() {
+            const acc = document.getElementById('wd-account').value;
+            const amt = parseInt(document.getElementById('wd-amount').value);
+            const loading = document.getElementById('wd-loading');
+            if(!acc) return showToast("Chưa nhập STK!", "error");
+            if(!amt || amt > balance) return showToast("Số tiền không hợp lệ!", "error");
+            
+            loading.classList.remove('hidden');
+            setTimeout(() => {
+                loading.classList.add('hidden');
+                balance -= amt;
+                updateBalanceUI();
+                closeWithdrawModal();
+                showToast(`Đã rút ${amt.toLocaleString()} về TK ${acc}`, "success");
+            }, 1500);
+        }
+        function saveSettings() {
+            const k = document.getElementById('api-key-input').value.trim();
+            localStorage.setItem('gemini_api_key', k); apiKey = k;
+            document.getElementById('settings-modal').classList.add('hidden');
+            showToast("Đã lưu API Key", "success");
+            // Khởi động lại chat loop sau khi lưu key
+            startChatLoop();
+        }
+
+        // --- HÀM LẤY KẾT QUẢ AI (ĐÃ ĐIỀU CHỈNH ĐỂ BẺ LÁI THẤT THƯỜNG) ---
+        async function getGeminiResult() {
+            const randomDice = () => [1+Math.floor(Math.random()*6), 1+Math.floor(Math.random()*6), 1+Math.floor(Math.random()*6)];
+            if (!apiKey) return { dice: randomDice() }; 
+            
+            // Chuyển lịch sử thành chuỗi T (Tài) hoặc X (Xỉu)
+            const historyStr = history.slice(-10).map(h => h.result === 'tai' ? 'T' : 'X').join(',');
+            
+            // *** ĐIỀU CHỈNH SYSTEM PROMPT ĐỂ TẠO CẦU BẺ LÁI THẤT THƯỜNG ***
+            const systemPrompt = "Bạn là một trí tuệ nhân tạo làm nhiệm vụ giả lập một nhà cái tài xỉu. Nhiệm vụ của bạn là tạo ra kết quả xúc xắc (dice: [d1, d2, d3]) DỰA VÀO lịch sử cầu (T/X) được cung cấp. Theo yêu cầu của người chơi, bạn phải tạo ra các kết quả **CỰC KỲ KHÓ DỰ ĐOÁN** (unpredictable), thường xuyên bẻ lái, và không theo bất kỳ quy luật 'cầu' rõ ràng nào (như bệt hay 1-1) để thách thức người chơi tối đa. Tăng cường tính ngẫu nhiên và thay đổi liên tục. Trả lời chỉ bằng JSON.";
+            const prompt = `Game Tài Xỉu. Lịch sử cầu 10 ván gần nhất (T=Tài, X=Xỉu) là: ${historyStr}. Hãy tạo kết quả xúc xắc tiếp theo theo hướng TĂNG CƯỜNG SỰ THAY ĐỔI, không tạo ra các cầu dài, và thường xuyên bẻ cầu. Trả về JSON {"dice": [d1, d2, d3]} trong đó d1, d2, d3 là số từ 1 đến 6.`;
+            
+            try {
+                const result = await callGemini(prompt, systemPrompt);
+                
+                // Kiểm tra và trả về kết quả
+                if (result && Array.isArray(result.dice) && result.dice.length === 3) {
+                    const validDice = result.dice.map(d => Math.max(1, Math.min(6, Math.round(d))));
+                    return { dice: validDice };
+                }
+                
+                console.warn("AI trả về kết quả không hợp lệ, dùng kết quả ngẫu nhiên.");
+                return { dice: randomDice() }; 
+            } catch (e) { 
+                console.error("Lỗi gọi API hoặc parse kết quả AI:", e);
+                return { dice: randomDice() }; 
+            }
+        }
+
+        function addChat(user, msg) {
+            const box = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = 'chat-msg';
+            let color = "text-slate-300";
+            if(user === "Hệ thống") color = "text-red-500 font-bold";
+            else {
+                const bot = bots.find(b => b.name === user);
+                if(bot) color = bot.color; else color = "text-yellow-300"; // User chat
+            }
+            div.innerHTML = `<span class="font-bold ${color}">${user}:</span> <span class="text-slate-200">${msg}</span>`;
+            box.appendChild(div);
+            // Cuộn xuống cuối
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function sendUserChat() {
+            const val = document.getElementById('user-chat').value.trim();
+            if(val) { 
+                addChat("Tôi", val); 
+                document.getElementById('user-chat').value = ''; 
+                // Thêm tính năng bot phản hồi sau 0.5s
+                if (gameState === 'betting') {
+                    setTimeout(() => triggerBotReactionToUserChat(val), 500);
+                }
+            }
+        }
+
+        function renderDice(arr) {
+            const area = document.getElementById('dice-area');
+            area.innerHTML = '';
+            arr.forEach(num => {
+                let d = ''; for(let i=0;i<num;i++) d+='<div class="dot"></div>';
+                area.innerHTML += `<div class="dice face-${num}">${d}</div>`;
+            });
+        }
+
+        function renderHistory() {
+            const grid = document.getElementById('history-grid');
+            grid.innerHTML = '';
+            const recent = history.slice(-20);
+            const t = history.filter(x=>x.result==='tai').length;
+            const x = history.filter(x=>x.result==='xiu').length;
+            document.getElementById('cau-stats').innerText = `T: ${t} - X: ${x}`;
+            recent.forEach(h => {
+                const d = document.createElement('div');
+                d.className = `cau-dot ${h.result === 'tai' ? 'cau-tai' : 'cau-xiu'}`;
+                grid.appendChild(d);
+            });
+        }
+
+        function showToast(msg, type) {
+            const t = document.getElementById('toast');
+            t.className = `show ${type}`; t.innerText = msg;
+            setTimeout(() => { t.className = t.className.replace('show', ''); }, 3000);
+        }
+        
+        // --- CHẾ ĐỘ TOÀN MÀN HÌNH ---
+        function toggleFullScreen() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+                // Vào chế độ toàn màn hình
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) { /* Safari */
+                    document.documentElement.webkitRequestFullscreen();
+                } else if (document.documentElement.msRequestFullscreen) { /* IE11 */
+                    document.documentElement.msRequestFullscreen();
+                }
+                document.getElementById('fullscreen-btn').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v4m0 0v4m0-4h4m-4 0h-4m0 4h4m0 0v4m0 0v4m0-4h4m-4 0h-4" /></svg>';
+            } else {
+                // Thoát chế độ toàn màn hình
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { /* IE11 */
+                    document.msExitFullscreen();
+                }
+                document.getElementById('fullscreen-btn').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m7-5v4m0 0h-4m4-4l-5 5M4 16v4m0 0h4m-4 0l5-5m7 5v-4m0 4h-4m4 0l-5-5" /></svg>';
+            }
+        }
+        
+        // --- KHỞI TẠO BAN ĐẦU ---
+        updateBalanceUI();
+        startChatLoop(); 
+    </script>
+</body>
+</html>
